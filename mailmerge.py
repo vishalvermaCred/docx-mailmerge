@@ -123,18 +123,118 @@ class MailMerge(object):
         zi = self.zip.getinfo(fn)
         return zi, etree.parse(self.zip.open(zi))
 
+    # def write(self, file):
+    #     # Replace all remaining merge fields with empty values
+    #     for field in self.get_merge_fields():
+    #         self.merge(**{field: ''})
+
+    #     with ZipFile(file, 'w', ZIP_DEFLATED) as output:
+    #         for zi in self.zip.filelist:
+    #             if zi in self.parts:
+    #                 xml = etree.tostring(self.parts[zi].getroot())
+    #                 output.writestr(zi.filename, xml)
+    #             elif zi == self._settings_info:
+    #                 xml = etree.tostring(self.settings.getroot())
+    #                 output.writestr(zi.filename, xml)
+    #             else:
+    #                 output.writestr(zi.filename, self.zip.read(zi))
+
     def write(self, file):
         # Replace all remaining merge fields with empty values
         for field in self.get_merge_fields():
             self.merge(**{field: ''})
 
+
         with ZipFile(file, 'w', ZIP_DEFLATED) as output:
             for zi in self.zip.filelist:
                 if zi in self.parts:
                     xml = etree.tostring(self.parts[zi].getroot())
+                    xml = str(xml, 'utf-8')
+                    while xml.find('<w:t></w:t>') > 0:
+                        ind = xml.find('<w:t></w:t>')
+                        i = ind
+                        while True:
+                            while(xml[i-4:i] != '<w:r' ):
+                                i -= 1
+                            if (xml[i] == ' ' or xml[i] == '>'):
+                                temp_i = i-4
+                                start_i = i-4
+                                end_i = ind+17
+                                break
+                            else:
+                                i -= 1
+                        # print(xml[start_i:end_i], end='\n\n')
+                        if xml[ind+17 : ind+22] == '<w:r>' or xml[ind+17 : ind+22] == '<w:r ':
+                            end_ind = ind+22
+                            while(xml[end_ind: end_ind+6] != '</w:r>'):
+                                end_ind+=1
+                            end_i = end_ind+6
+                        
+                        if xml[temp_i-8:temp_i] == '</w:pPr>' and xml[ind+17:ind+23] == '</w:p>':
+                            j = temp_i-8
+                            
+                            while True:
+                                while(xml[j-4:j] != '<w:p'):
+                                    j = j - 1
+                                if xml[j] == '>' or xml[j] == ' ':
+                                    start_i = j-4
+                                    end_i = ind+23
+                                    break
+                                else:
+                                    j -= 1
+                            # print(xml[start_i:end_i],end='\n\n')
+
+                        temp = xml[:start_i] + xml[end_i:]
+                        del(xml)
+                        xml = temp
+                        del(temp)
+                    xml = bytes(xml,'utf-8')
                     output.writestr(zi.filename, xml)
                 elif zi == self._settings_info:
                     xml = etree.tostring(self.settings.getroot())
+                    xml2 = str(xml, 'utf-8')
+                    while xml2.find('<w:t></w:t>') > 0:
+                        ind = xml2.find('<w:t></w:t>')
+                        i = ind
+                        while True:
+                            while(xml[i-4:i] != '<w:r' ):
+                                i -= 1
+                            if (xml[i] == '>' or xml[i] == ' '):
+                                temp_i = i-4
+                                start_i = i-4
+                                end_i = ind+17
+                                break
+                            else:
+                                i -=1
+                        # print(xml[start_i:end_i],end='\n\n')
+                        if xml2[ind+17 : ind+22] == '<w:r>' or xml2[ind+17 : ind+22] == '<w:r ':
+                            end_ind = ind+22
+                            while(xml2[end_ind: end_ind+6] != '</w:r>'):
+                                end_ind+=1
+                            end_i = end_ind+6
+                        
+                        if xml2[temp_i-8:temp_i] == '</w:pPr>' and xml2[ind+17:ind+23] == '</w:p>':
+                            j = temp_i-8
+                            # while(xml2[j-4:j] != '<w:p'):
+                            #     j = j - 1
+                            # start_i = j-5
+                            # end_i = ind+23
+                            while True:
+                                while(xml2[j-4:j] != '<w:p'):
+                                    j = j - 1
+                                if xml2[j] == '>' or xml2[j] == ' ':
+                                    start_i = j-4
+                                    end_i = ind+23
+                                    break
+                                else:
+                                    j -= 1
+                            # print(xml[start_i:end_i],end='\n\n')
+
+                        temp2 = xml2[:start_i] + xml2[end_i:]
+                        del(xml2)
+                        xml2 = temp2
+                        del(temp2)
+                    xml = bytes(xml2,'utf-8')
                     output.writestr(zi.filename, xml)
                 else:
                     output.writestr(zi.filename, self.zip.read(zi))
