@@ -169,7 +169,7 @@ class MailMerge(object):
                             while(xml[end_ind: end_ind+6] != '</w:r>'):
                                 end_ind+=1
                             temp_end_i = end_ind+6
-                            empty_block = '<w:t xml:space="preserve"></w:t>'
+                            empty_block = '<w:t xml:space="preserve"> </w:t>'
                             if xml.find(empty_block, end_i+1,temp_end_i) > 0:
                                 end_i = temp_end_i
                                 if xml[start_i-8:start_i] == '</w:pPr>' and xml[end_i:end_i+6] == '</w:p>':
@@ -226,7 +226,7 @@ class MailMerge(object):
                             while(xml2[end_ind: end_ind+6] != '</w:r>'):
                                 end_ind+=1
                             temp_end_i = end_ind+6
-                            empty_block = '<w:t xml:space="preserve"></w:t>'
+                            empty_block = '<w:t xml:space="preserve"> </w:t>'
                             if xml2.find(empty_block, end_i+1,temp_end_i) > 0:
                                 end_i = temp_end_i
                                 if xml2[start_i-8:start_i] == '</w:pPr>' and xml2[end_i:end_i+6] == '</w:p>':
