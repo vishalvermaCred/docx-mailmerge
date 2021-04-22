@@ -172,6 +172,17 @@ class MailMerge(object):
                             empty_block = '<w:t xml:space="preserve"></w:t>'
                             if xml.find(empty_block, end_i+1,temp_end_i):
                                 end_i = temp_end_i
+                                if xml2[start_i-8:start_i] == '</w:pPr>' and xml2[end_i:end_i+6] == '</w:p>':
+                                    j = start_i-8
+                                    while True:
+                                        while(xml2[j-4:j] != '<w:p'):
+                                            j = j - 1
+                                        if xml2[j] == '>' or xml2[j] == ' ':
+                                            start_i = j-4
+                                            end_i = end_i + 6
+                                            break
+                                        else:
+                                            j -= 1
                         
                         if xml[temp_i-8:temp_i] == '</w:pPr>' and xml[ind+17:ind+23] == '</w:p>':
                             j = temp_i-8
@@ -218,6 +229,17 @@ class MailMerge(object):
                             empty_block = '<w:t xml:space="preserve"></w:t>'
                             if xml2.find(empty_block, end_i+1,temp_end_i):
                                 end_i = temp_end_i
+                                if xml2[start_i-8:start_i] == '</w:pPr>' and xml2[end_i:end_i+6] == '</w:p>':
+                                    j = start_i-8
+                                    while True:
+                                        while(xml2[j-4:j] != '<w:p'):
+                                            j = j - 1
+                                        if xml2[j] == '>' or xml2[j] == ' ':
+                                            start_i = j-4
+                                            end_i = end_i+6
+                                            break
+                                        else:
+                                            j -= 1
                         
                         if xml2[temp_i-8:temp_i] == '</w:pPr>' and xml2[ind+17:ind+23] == '</w:p>':
                             j = temp_i-8
