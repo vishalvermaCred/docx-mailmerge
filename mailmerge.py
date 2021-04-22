@@ -172,12 +172,12 @@ class MailMerge(object):
                             empty_block = '<w:t xml:space="preserve"></w:t>'
                             if xml.find(empty_block, end_i+1,temp_end_i):
                                 end_i = temp_end_i
-                                if xml2[start_i-8:start_i] == '</w:pPr>' and xml2[end_i:end_i+6] == '</w:p>':
+                                if xml[start_i-8:start_i] == '</w:pPr>' and xml[end_i:end_i+6] == '</w:p>':
                                     j = start_i-8
                                     while True:
-                                        while(xml2[j-4:j] != '<w:p'):
+                                        while(xml[j-4:j] != '<w:p'):
                                             j = j - 1
-                                        if xml2[j] == '>' or xml2[j] == ' ':
+                                        if xml[j] == '>' or xml[j] == ' ':
                                             start_i = j-4
                                             end_i = end_i + 6
                                             break
