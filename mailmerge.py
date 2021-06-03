@@ -145,12 +145,14 @@ class MailMerge(object):
         for field in self.get_merge_fields():
             self.merge(**{field: ''})
 
+        
         with ZipFile(file, 'w', ZIP_DEFLATED) as output:
             for zi in self.zip.filelist:
                 if zi in self.parts:
                     xml = etree.tostring(self.parts[zi].getroot())
                     # if str(zi) == "<ZipInfo filename='word/document.xml' compress_type=deflate file_size=2070956 compress_size=56133>":
                     if 'word/document.xml' in str(zi):
+                        # print('true')
                         xml = xml.decode('utf-8')
                         all_table_tags = re.findall('<w:tbl>',xml)
                         # print(all_table_tags)
@@ -162,9 +164,10 @@ class MailMerge(object):
                         end_index = len(xml)
                         # print(end_index)
                         if_table_found = False
-                        while(total_empty_tags_handled < total_empty_tags ):
+                        while( total_empty_tags > 0 ):
                             if not if_table_found :
                                 start_index = 0
+                                end_index = len(xml)
                             table_start_index, table_end_index = 0,len(xml)
                             n = len(xml)
                             all_table_tags_indexses = []
@@ -182,7 +185,7 @@ class MailMerge(object):
                                     break
 
                             ind = xml.find('<w:t></w:t>',start_index,end_index)
-                            start_index = ind + len('<w:t></w:t>')
+                            # start_index = ind + len('<w:t></w:t>')
                             # print(start_index, end_index)
                             is_in_table = False
                             for tags in all_table_tags_indexses:
@@ -190,12 +193,19 @@ class MailMerge(object):
                                 if ind >= tags[0] and ind <= tags[1]:
                                     if_table_found = True
                                     is_in_table = True
+                                    # print(tags[0],tags[1])
+                                    # print(start_index)
                                     start_index = tags[1]
+                                    # print(start_index, end_index)
                                     table = xml[tags[0]:tags[1]]
                                     in_table_empty_tags = re.findall('<w:t></w:t>',table)
+                                    # print(total_empty_tags)
+                                    total_empty_tags -= len(in_table_empty_tags)
+                                    # print(total_empty_tags)
                                     # print('t1:',total_empty_tags ,total_empty_tags_handled)
                                     # print(len(in_table_empty_tags))
-                                    total_empty_tags_handled += len(in_table_empty_tags)
+                                    # total_empty_tags_handled += len(in_table_empty_tags)
+                                    # print('t2:',total_empty_tags ,total_empty_tags_handled)
                                     break
                             
                             if not is_in_table:
@@ -246,12 +256,18 @@ class MailMerge(object):
                                             j -= 1
                                     # print(xml[start_i:end_i],end='\n\n')
 
+                                # print(len(xml))
                                 temp = xml[:start_i] + xml[end_i:]
                                 del(xml)
                                 xml = temp
                                 del(temp)
                                 end_index = len(xml)
-                                total_empty_tags_handled += 1
+                                # print(len(xml))
+                                # total_empty_tags_handled += 1
+                                total_empty_tags -= 1
+                        f = open('final_xml.xml','w')
+                        f.write(f"{xml}")
+                        f.close()
                         xml = bytes(xml,'utf-8')
                     output.writestr(zi.filename, xml)
                 elif zi == self._settings_info:
