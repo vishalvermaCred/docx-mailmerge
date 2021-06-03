@@ -4,6 +4,7 @@ from lxml.etree import Element
 from lxml import etree
 from zipfile import ZipFile, ZIP_DEFLATED
 import shlex
+import re
 
 
 NAMESPACES = {
@@ -144,128 +145,249 @@ class MailMerge(object):
         for field in self.get_merge_fields():
             self.merge(**{field: ''})
 
-
         with ZipFile(file, 'w', ZIP_DEFLATED) as output:
             for zi in self.zip.filelist:
                 if zi in self.parts:
                     xml = etree.tostring(self.parts[zi].getroot())
-                    xml = str(xml, 'utf-8')
-                    while xml.find('<w:t></w:t>') > 0:
-                        ind = xml.find('<w:t></w:t>')
-                        i = ind
-                        while True:
-                            while(xml[i-4:i] != '<w:r' ):
-                                i -= 1
-                            if (xml[i] == ' ' or xml[i] == '>'):
-                                temp_i = i-4
-                                start_i = i-4
-                                end_i = ind+17
-                                break
-                            else:
-                                i -= 1
-                        # print(xml[start_i:end_i], end='\n\n')
-                        if xml[ind+17 : ind+22] == '<w:r>' or xml[ind+17 : ind+22] == '<w:r ':
-                            end_ind = ind+22
-                            while(xml[end_ind: end_ind+6] != '</w:r>'):
-                                end_ind+=1
-                            temp_end_i = end_ind+6
-                            empty_block = '<w:t xml:space="preserve"> </w:t>'
-                            if xml.find(empty_block, end_i+1,temp_end_i) > 0:
-                                end_i = temp_end_i
-                                if xml[start_i-8:start_i] == '</w:pPr>' and xml[end_i:end_i+6] == '</w:p>':
-                                    j = start_i-8
+                    # if str(zi) == "<ZipInfo filename='word/document.xml' compress_type=deflate file_size=2070956 compress_size=56133>":
+                    if 'word/document.xml' in str(zi):
+                        xml = xml.decode('utf-8')
+                        all_table_tags = re.findall('<w:tbl>',xml)
+                        # print(all_table_tags)
+                        all_empty_tags = re.findall('<w:t></w:t>',xml)
+                        total_empty_tags = len(all_empty_tags)
+                        # print(total_empty_tags)
+                        total_empty_tags_handled = 0
+                        start_index=0
+                        end_index = len(xml)
+                        # print(end_index)
+                        if_table_found = False
+                        while(total_empty_tags_handled < total_empty_tags ):
+                            if not if_table_found :
+                                start_index = 0
+                            table_start_index, table_end_index = 0,len(xml)
+                            n = len(xml)
+                            all_table_tags_indexses = []
+                            for i in range(len(all_table_tags)):
+                                # print('finding table tags')
+                                table_start_index = xml.find('<w:tbl>',table_start_index,table_end_index)
+                                table_end_index = xml.find('</w:tbl>',table_start_index,table_end_index)
+                                if table_start_index > -1 and table_end_index > -1:
+                                    table_end_index += len('</w:tbl>')
+                                    all_table_tags_indexses.append((table_start_index, table_end_index))
+                                    # print(xml[table_start_index:table_end_index])
+                                    table_start_index = table_end_index
+                                    table_end_index = n
+                                else:
+                                    break
+
+                            ind = xml.find('<w:t></w:t>',start_index,end_index)
+                            start_index = ind + len('<w:t></w:t>')
+                            # print(start_index, end_index)
+                            is_in_table = False
+                            for tags in all_table_tags_indexses:
+                                # print('checking if in table')
+                                if ind >= tags[0] and ind <= tags[1]:
+                                    if_table_found = True
+                                    is_in_table = True
+                                    start_index = tags[1]
+                                    table = xml[tags[0]:tags[1]]
+                                    in_table_empty_tags = re.findall('<w:t></w:t>',table)
+                                    # print('t1:',total_empty_tags ,total_empty_tags_handled)
+                                    # print(len(in_table_empty_tags))
+                                    total_empty_tags_handled += len(in_table_empty_tags)
+                                    break
+                            
+                            if not is_in_table:
+                                # print("in here")
+                                i = ind
+                                while True:
+                                    while(xml[i-4:i] != '<w:r' ):
+                                        i -= 1
+                                    if (xml[i] == ' ' or xml[i] == '>'):
+                                        temp_i = i-4
+                                        start_i = i-4
+                                        end_i = ind+17
+                                        break
+                                    else:
+                                        i -= 1
+                                # print(xml[start_i:end_i], end='\n\n')
+                                if xml[ind+17 : ind+22] == '<w:r>' or xml[ind+17 : ind+22] == '<w:r ':
+                                    end_ind = ind+22
+                                    while(xml[end_ind: end_ind+6] != '</w:r>'):
+                                        end_ind+=1
+                                    temp_end_i = end_ind+6
+                                    empty_block = '<w:t xml:space="preserve"> </w:t>'
+                                    if xml.find(empty_block, end_i+1,temp_end_i) > 0:
+                                        end_i = temp_end_i
+                                        if xml[start_i-8:start_i] == '</w:pPr>' and xml[end_i:end_i+6] == '</w:p>':
+                                            j = start_i-8
+                                            while True:
+                                                while(xml[j-4:j] != '<w:p'):
+                                                    j = j - 1
+                                                if xml[j] == '>' or xml[j] == ' ':
+                                                    start_i = j-4
+                                                    end_i = end_i + 6
+                                                    break
+                                                else:
+                                                    j -= 1
+                                
+                                if xml[temp_i-8:temp_i] == '</w:pPr>' and xml[ind+17:ind+23] == '</w:p>':
+                                    j = temp_i-8
+                                    
                                     while True:
                                         while(xml[j-4:j] != '<w:p'):
                                             j = j - 1
                                         if xml[j] == '>' or xml[j] == ' ':
                                             start_i = j-4
-                                            end_i = end_i + 6
+                                            end_i = ind+23
                                             break
                                         else:
                                             j -= 1
-                        
-                        if xml[temp_i-8:temp_i] == '</w:pPr>' and xml[ind+17:ind+23] == '</w:p>':
-                            j = temp_i-8
-                            
-                            while True:
-                                while(xml[j-4:j] != '<w:p'):
-                                    j = j - 1
-                                if xml[j] == '>' or xml[j] == ' ':
-                                    start_i = j-4
-                                    end_i = ind+23
-                                    break
-                                else:
-                                    j -= 1
-                            # print(xml[start_i:end_i],end='\n\n')
+                                    # print(xml[start_i:end_i],end='\n\n')
 
-                        temp = xml[:start_i] + xml[end_i:]
-                        del(xml)
-                        xml = temp
-                        del(temp)
-                    xml = bytes(xml,'utf-8')
+                                temp = xml[:start_i] + xml[end_i:]
+                                del(xml)
+                                xml = temp
+                                del(temp)
+                                end_index = len(xml)
+                                total_empty_tags_handled += 1
+                        xml = bytes(xml,'utf-8')
                     output.writestr(zi.filename, xml)
                 elif zi == self._settings_info:
                     xml = etree.tostring(self.settings.getroot())
-                    xml2 = str(xml, 'utf-8')
-                    while xml2.find('<w:t></w:t>') > 0:
-                        ind = xml2.find('<w:t></w:t>')
-                        i = ind
-                        while True:
-                            while(xml[i-4:i] != '<w:r' ):
-                                i -= 1
-                            if (xml[i] == '>' or xml[i] == ' '):
-                                temp_i = i-4
-                                start_i = i-4
-                                end_i = ind+17
-                                break
-                            else:
-                                i -=1
-                        # print(xml[start_i:end_i],end='\n\n')
-                        if xml2[ind+17 : ind+22] == '<w:r>' or xml2[ind+17 : ind+22] == '<w:r ':
-                            end_ind = ind+22
-                            while(xml2[end_ind: end_ind+6] != '</w:r>'):
-                                end_ind+=1
-                            temp_end_i = end_ind+6
-                            empty_block = '<w:t xml:space="preserve"> </w:t>'
-                            if xml2.find(empty_block, end_i+1,temp_end_i) > 0:
-                                end_i = temp_end_i
-                                if xml2[start_i-8:start_i] == '</w:pPr>' and xml2[end_i:end_i+6] == '</w:p>':
-                                    j = start_i-8
-                                    while True:
-                                        while(xml2[j-4:j] != '<w:p'):
-                                            j = j - 1
-                                        if xml2[j] == '>' or xml2[j] == ' ':
-                                            start_i = j-4
-                                            end_i = end_i+6
-                                            break
-                                        else:
-                                            j -= 1
-                        
-                        if xml2[temp_i-8:temp_i] == '</w:pPr>' and xml2[ind+17:ind+23] == '</w:p>':
-                            j = temp_i-8
-                            # while(xml2[j-4:j] != '<w:p'):
-                            #     j = j - 1
-                            # start_i = j-5
-                            # end_i = ind+23
-                            while True:
-                                while(xml2[j-4:j] != '<w:p'):
-                                    j = j - 1
-                                if xml2[j] == '>' or xml2[j] == ' ':
-                                    start_i = j-4
-                                    end_i = ind+23
-                                    break
-                                else:
-                                    j -= 1
-                            # print(xml[start_i:end_i],end='\n\n')
-
-                        temp2 = xml2[:start_i] + xml2[end_i:]
-                        del(xml2)
-                        xml2 = temp2
-                        del(temp2)
-                    xml = bytes(xml2,'utf-8')
                     output.writestr(zi.filename, xml)
                 else:
                     output.writestr(zi.filename, self.zip.read(zi))
+
+
+    # def write(self, file):
+    #     # Replace all remaining merge fields with empty values
+    #     for field in self.get_merge_fields():
+    #         self.merge(**{field: ''})
+
+
+    #     with ZipFile(file, 'w', ZIP_DEFLATED) as output:
+    #         for zi in self.zip.filelist:
+    #             if zi in self.parts:
+    #                 xml = etree.tostring(self.parts[zi].getroot())
+    #                 xml = str(xml, 'utf-8')
+    #                 while xml.find('<w:t></w:t>') > 0:
+    #                     ind = xml.find('<w:t></w:t>')
+    #                     i = ind
+    #                     while True:
+    #                         while(xml[i-4:i] != '<w:r' ):
+    #                             i -= 1
+    #                         if (xml[i] == ' ' or xml[i] == '>'):
+    #                             temp_i = i-4
+    #                             start_i = i-4
+    #                             end_i = ind+17
+    #                             break
+    #                         else:
+    #                             i -= 1
+    #                     # print(xml[start_i:end_i], end='\n\n')
+    #                     if xml[ind+17 : ind+22] == '<w:r>' or xml[ind+17 : ind+22] == '<w:r ':
+    #                         end_ind = ind+22
+    #                         while(xml[end_ind: end_ind+6] != '</w:r>'):
+    #                             end_ind+=1
+    #                         temp_end_i = end_ind+6
+    #                         empty_block = '<w:t xml:space="preserve"> </w:t>'
+    #                         if xml.find(empty_block, end_i+1,temp_end_i) > 0:
+    #                             end_i = temp_end_i
+    #                             if xml[start_i-8:start_i] == '</w:pPr>' and xml[end_i:end_i+6] == '</w:p>':
+    #                                 j = start_i-8
+    #                                 while True:
+    #                                     while(xml[j-4:j] != '<w:p'):
+    #                                         j = j - 1
+    #                                     if xml[j] == '>' or xml[j] == ' ':
+    #                                         start_i = j-4
+    #                                         end_i = end_i + 6
+    #                                         break
+    #                                     else:
+    #                                         j -= 1
+                        
+    #                     if xml[temp_i-8:temp_i] == '</w:pPr>' and xml[ind+17:ind+23] == '</w:p>':
+    #                         j = temp_i-8
+                            
+    #                         while True:
+    #                             while(xml[j-4:j] != '<w:p'):
+    #                                 j = j - 1
+    #                             if xml[j] == '>' or xml[j] == ' ':
+    #                                 start_i = j-4
+    #                                 end_i = ind+23
+    #                                 break
+    #                             else:
+    #                                 j -= 1
+    #                         # print(xml[start_i:end_i],end='\n\n')
+
+    #                     temp = xml[:start_i] + xml[end_i:]
+    #                     del(xml)
+    #                     xml = temp
+    #                     del(temp)
+    #                 xml = bytes(xml,'utf-8')
+    #                 output.writestr(zi.filename, xml)
+    #             elif zi == self._settings_info:
+    #                 xml = etree.tostring(self.settings.getroot())
+    #                 xml2 = str(xml, 'utf-8')
+    #                 while xml2.find('<w:t></w:t>') > 0:
+    #                     ind = xml2.find('<w:t></w:t>')
+    #                     i = ind
+    #                     while True:
+    #                         while(xml[i-4:i] != '<w:r' ):
+    #                             i -= 1
+    #                         if (xml[i] == '>' or xml[i] == ' '):
+    #                             temp_i = i-4
+    #                             start_i = i-4
+    #                             end_i = ind+17
+    #                             break
+    #                         else:
+    #                             i -=1
+    #                     # print(xml[start_i:end_i],end='\n\n')
+    #                     if xml2[ind+17 : ind+22] == '<w:r>' or xml2[ind+17 : ind+22] == '<w:r ':
+    #                         end_ind = ind+22
+    #                         while(xml2[end_ind: end_ind+6] != '</w:r>'):
+    #                             end_ind+=1
+    #                         temp_end_i = end_ind+6
+    #                         empty_block = '<w:t xml:space="preserve"> </w:t>'
+    #                         if xml2.find(empty_block, end_i+1,temp_end_i) > 0:
+    #                             end_i = temp_end_i
+    #                             if xml2[start_i-8:start_i] == '</w:pPr>' and xml2[end_i:end_i+6] == '</w:p>':
+    #                                 j = start_i-8
+    #                                 while True:
+    #                                     while(xml2[j-4:j] != '<w:p'):
+    #                                         j = j - 1
+    #                                     if xml2[j] == '>' or xml2[j] == ' ':
+    #                                         start_i = j-4
+    #                                         end_i = end_i+6
+    #                                         break
+    #                                     else:
+    #                                         j -= 1
+                        
+    #                     if xml2[temp_i-8:temp_i] == '</w:pPr>' and xml2[ind+17:ind+23] == '</w:p>':
+    #                         j = temp_i-8
+    #                         # while(xml2[j-4:j] != '<w:p'):
+    #                         #     j = j - 1
+    #                         # start_i = j-5
+    #                         # end_i = ind+23
+    #                         while True:
+    #                             while(xml2[j-4:j] != '<w:p'):
+    #                                 j = j - 1
+    #                             if xml2[j] == '>' or xml2[j] == ' ':
+    #                                 start_i = j-4
+    #                                 end_i = ind+23
+    #                                 break
+    #                             else:
+    #                                 j -= 1
+    #                         # print(xml[start_i:end_i],end='\n\n')
+
+    #                     temp2 = xml2[:start_i] + xml2[end_i:]
+    #                     del(xml2)
+    #                     xml2 = temp2
+    #                     del(temp2)
+    #                 xml = bytes(xml2,'utf-8')
+    #                 output.writestr(zi.filename, xml)
+    #             else:
+    #                 output.writestr(zi.filename, self.zip.read(zi))
 
     def get_merge_fields(self, parts=None):
         if not parts:
