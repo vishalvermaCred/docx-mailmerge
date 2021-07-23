@@ -156,21 +156,21 @@ class MailMerge(object):
                     xml = xml.decode('utf-8')
                     all_table_tags = re.findall('<w:tbl>',xml)
                     # print(all_table_tags)
-                    table_start,table_end = 0,len(xml)
-                    for i in range(len(all_table_tags)):
-                        start_t_index = xml.find('<w:tbl>',table_start,table_end)
-                        end_t_index = xml.find('</w:tbl>',start_t_index,table_end)
-                        end_t_index += len('</w:tbl>')
-                        # print(f"*******\n\n{xml[start_t_index:end_t_index]}\n\n*******")
-                        table_xml = xml[start_t_index:end_t_index]
-                        all_w_t_tags = re.findall('<w:t>',table_xml)
-                        all_empty_w_t_tags = re.findall('<w:t></w:t>',table_xml)
-                        # print(f"******\n\n{len(all_w_t_tags), len(all_empty_w_t_tags)}\n\n*********")
-                        if len(all_w_t_tags) == len(all_empty_w_t_tags):
-                            xml = xml[:start_t_index] + xml[end_t_index:]
-                            table_end = len(xml)
-                        else:
-                            table_start = end_t_index
+                    # table_start,table_end = 0,len(xml)
+                    # for i in range(len(all_table_tags)):
+                    #     start_t_index = xml.find('<w:tbl>',table_start,table_end)
+                    #     end_t_index = xml.find('</w:tbl>',start_t_index,table_end)
+                    #     end_t_index += len('</w:tbl>')
+                    #     # print(f"*******\n\n{xml[start_t_index:end_t_index]}\n\n*******")
+                    #     table_xml = xml[start_t_index:end_t_index]
+                    #     all_w_t_tags = re.findall('<w:t>',table_xml)
+                    #     all_empty_w_t_tags = re.findall('<w:t></w:t>',table_xml)
+                    #     # print(f"******\n\n{len(all_w_t_tags), len(all_empty_w_t_tags)}\n\n*********")
+                    #     if len(all_w_t_tags) == len(all_empty_w_t_tags):
+                    #         xml = xml[:start_t_index] + xml[end_t_index:]
+                    #         table_end = len(xml)
+                    #     else:
+                    #         table_start = end_t_index
                     all_empty_tags = re.findall('<w:t></w:t>',xml)
                     total_empty_tags = len(all_empty_tags)
                     # print(total_empty_tags)
