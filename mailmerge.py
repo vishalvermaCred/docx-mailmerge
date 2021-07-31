@@ -151,26 +151,163 @@ class MailMerge(object):
                 if zi in self.parts:
                     xml = etree.tostring(self.parts[zi].getroot())
                     # if str(zi) == "<ZipInfo filename='word/document.xml' compress_type=deflate file_size=2070956 compress_size=56133>":
+                    if 'word/document.xml' in str(zi):
+                    # print('true')
+                        xml = xml.decode('utf-8')
+                        all_table_tags = re.findall('<w:tbl>',xml)
+                        # print(all_table_tags)
+                        table_start,table_end = 0,len(xml)
+                        for i in range(len(all_table_tags)):
+                            start_t_index = xml.find('<w:tbl>',table_start,table_end)
+                            end_t_index = xml.find('</w:tbl>',start_t_index,table_end)
+                            end_t_index += len('</w:tbl>')
+                            # print(f"*******\n\n{xml[start_t_index:end_t_index]}\n\n*******")
+                            table_xml = xml[start_t_index:end_t_index]
+                            all_w_t_tags = re.findall('<w:t>',table_xml)
+                            all_empty_w_t_tags = re.findall('<w:t></w:t>',table_xml)
+                            # print(f"******\n\n{len(all_w_t_tags), len(all_empty_w_t_tags)}\n\n*********")
+                            if len(all_w_t_tags) == len(all_empty_w_t_tags):
+                                xml = xml[:start_t_index] + xml[end_t_index:]
+                                table_end = len(xml)
+                            else:
+                                table_start = end_t_index
+                        all_empty_tags = re.findall('<w:t></w:t>',xml)
+                        total_empty_tags = len(all_empty_tags)
+                        # print(total_empty_tags)
+                        total_empty_tags_handled = 0
+                        start_index=0
+                        end_index = len(xml)
+                        # print(end_index)
+                        if_table_found = False
+                        while( total_empty_tags > 0 ):
+                            if not if_table_found :
+                                start_index = 0
+                                end_index = len(xml)
+                            table_start_index, table_end_index = 0,len(xml)
+                            n = len(xml)
+                            all_table_tags_indexses = []
+                            for i in range(len(all_table_tags)):
+                                # print('finding table tags')
+                                table_start_index = xml.find('<w:tbl>',table_start_index,table_end_index)
+                                table_end_index = xml.find('</w:tbl>',table_start_index,table_end_index)
+                                if table_start_index > -1 and table_end_index > -1:
+                                    table_end_index += len('</w:tbl>')
+                                    all_table_tags_indexses.append((table_start_index, table_end_index))
+                                    # print(xml[table_start_index:table_end_index])
+                                    table_start_index = table_end_index
+                                    table_end_index = n
+                                else:
+                                    break
+
+                            ind = xml.find('<w:t></w:t>',start_index,end_index)
+                            # start_index = ind + len('<w:t></w:t>')
+                            # print(start_index, end_index)
+                            is_in_table = False
+                            for tags in all_table_tags_indexses:
+                                # print('checking if in table')
+                                if ind >= tags[0] and ind <= tags[1]:
+                                    if_table_found = True
+                                    is_in_table = True
+                                    # print(tags[0],tags[1])
+                                    # print(start_index)
+                                    start_index = tags[1]
+                                    # print(start_index, end_index)
+                                    table = xml[tags[0]:tags[1]]
+                                    in_table_empty_tags = re.findall('<w:t></w:t>',table)
+                                    # print(total_empty_tags)
+                                    total_empty_tags -= len(in_table_empty_tags)
+                                    # print(total_empty_tags)
+                                    # print('t1:',total_empty_tags ,total_empty_tags_handled)
+                                    # print(len(in_table_empty_tags))
+                                    # total_empty_tags_handled += len(in_table_empty_tags)
+                                    # print('t2:',total_empty_tags ,total_empty_tags_handled)
+                                    break
+                            
+                            if not is_in_table:
+                                # print("in here")
+                                i = ind
+                                while True:
+                                    while(xml[i-4:i] != '<w:r' ):
+                                        i -= 1
+                                    if (xml[i] == ' ' or xml[i] == '>'):
+                                        temp_i = i-4
+                                        start_i = i-4
+                                        end_i = ind+17
+                                        break
+                                    else:
+                                        i -= 1
+                                # print(xml[start_i:end_i], end='\n\n')
+                                if xml[ind+17 : ind+22] == '<w:r>' or xml[ind+17 : ind+22] == '<w:r ':
+                                    end_ind = ind+22
+                                    while(xml[end_ind: end_ind+6] != '</w:r>'):
+                                        end_ind+=1
+                                    temp_end_i = end_ind+6
+                                    empty_block = '<w:t xml:space="preserve"> </w:t>'
+                                    if xml.find(empty_block, end_i+1,temp_end_i) > 0:
+                                        end_i = temp_end_i
+                                        if xml[start_i-8:start_i] == '</w:pPr>' and xml[end_i:end_i+6] == '</w:p>':
+                                            j = start_i-8
+                                            while True:
+                                                while(xml[j-4:j] != '<w:p'):
+                                                    j = j - 1
+                                                if xml[j] == '>' or xml[j] == ' ':
+                                                    start_i = j-4
+                                                    end_i = end_i + 6
+                                                    break
+                                                else:
+                                                    j -= 1
+                                
+                                if xml[temp_i-8:temp_i] == '</w:pPr>' and xml[ind+17:ind+23] == '</w:p>':
+                                    j = temp_i-8
+                                    
+                                    while True:
+                                        while(xml[j-4:j] != '<w:p'):
+                                            j = j - 1
+                                        if xml[j] == '>' or xml[j] == ' ':
+                                            start_i = j-4
+                                            end_i = ind+23
+                                            break
+                                        else:
+                                            j -= 1
+                                    # print(xml[start_i:end_i],end='\n\n')
+
+                                # print(len(xml))
+                                temp = xml[:start_i] + xml[end_i:]
+                                del(xml)
+                                xml = temp
+                                del(temp)
+                                end_index = len(xml)
+                                # print(len(xml))
+                                # total_empty_tags_handled += 1
+                                total_empty_tags -= 1
+                        # f = open('final_xml.xml','w')
+                        # f.write(f"{xml}")
+                        # f.close()
+                    xml = bytes(xml,'utf-8')
+                    output.writestr(zi.filename, xml)
+                elif zi == self._settings_info:
+                    xml = etree.tostring(self.settings.getroot())
+                    # if str(zi) == "<ZipInfo filename='word/document.xml' compress_type=deflate file_size=2070956 compress_size=56133>":
                     # if 'word/document.xml' in str(zi):
                     # print('true')
                     xml = xml.decode('utf-8')
                     all_table_tags = re.findall('<w:tbl>',xml)
                     # print(all_table_tags)
-                    # table_start,table_end = 0,len(xml)
-                    # for i in range(len(all_table_tags)):
-                    #     start_t_index = xml.find('<w:tbl>',table_start,table_end)
-                    #     end_t_index = xml.find('</w:tbl>',start_t_index,table_end)
-                    #     end_t_index += len('</w:tbl>')
-                    #     # print(f"*******\n\n{xml[start_t_index:end_t_index]}\n\n*******")
-                    #     table_xml = xml[start_t_index:end_t_index]
-                    #     all_w_t_tags = re.findall('<w:t>',table_xml)
-                    #     all_empty_w_t_tags = re.findall('<w:t></w:t>',table_xml)
-                    #     # print(f"******\n\n{len(all_w_t_tags), len(all_empty_w_t_tags)}\n\n*********")
-                    #     if len(all_w_t_tags) == len(all_empty_w_t_tags):
-                    #         xml = xml[:start_t_index] + xml[end_t_index:]
-                    #         table_end = len(xml)
-                    #     else:
-                    #         table_start = end_t_index
+                    table_start,table_end = 0,len(xml)
+                    for i in range(len(all_table_tags)):
+                        start_t_index = xml.find('<w:tbl>',table_start,table_end)
+                        end_t_index = xml.find('</w:tbl>',start_t_index,table_end)
+                        end_t_index += len('</w:tbl>')
+                        # print(f"*******\n\n{xml[start_t_index:end_t_index]}\n\n*******")
+                        table_xml = xml[start_t_index:end_t_index]
+                        all_w_t_tags = re.findall('<w:t>',table_xml)
+                        all_empty_w_t_tags = re.findall('<w:t></w:t>',table_xml)
+                        # print(f"******\n\n{len(all_w_t_tags), len(all_empty_w_t_tags)}\n\n*********")
+                        if len(all_w_t_tags) == len(all_empty_w_t_tags):
+                            xml = xml[:start_t_index] + xml[end_t_index:]
+                            table_end = len(xml)
+                        else:
+                            table_start = end_t_index
                     all_empty_tags = re.findall('<w:t></w:t>',xml)
                     total_empty_tags = len(all_empty_tags)
                     # print(total_empty_tags)
@@ -280,13 +417,10 @@ class MailMerge(object):
                             # print(len(xml))
                             # total_empty_tags_handled += 1
                             total_empty_tags -= 1
-                    f = open('final_xml.xml','w')
-                    f.write(f"{xml}")
-                    f.close()
+                    # f = open('final_xml.xml','w')
+                    # f.write(f"{xml}")
+                    # f.close()
                     xml = bytes(xml,'utf-8')
-                    output.writestr(zi.filename, xml)
-                elif zi == self._settings_info:
-                    xml = etree.tostring(self.settings.getroot())
                     output.writestr(zi.filename, xml)
                 else:
                     output.writestr(zi.filename, self.zip.read(zi))
