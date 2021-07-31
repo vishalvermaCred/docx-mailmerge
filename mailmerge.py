@@ -280,9 +280,9 @@ class MailMerge(object):
                             # print(len(xml))
                             # total_empty_tags_handled += 1
                             total_empty_tags -= 1
-                    f = open('final_xml.xml','w')
-                    f.write(f"{xml}")
-                    f.close()
+                    # f = open('final_xml.xml','w')
+                    # f.write(f"{xml}")
+                    # f.close()
                     xml = bytes(xml,'utf-8')
                     output.writestr(zi.filename, xml)
                 elif zi == self._settings_info:
