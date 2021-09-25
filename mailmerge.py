@@ -281,13 +281,14 @@ class MailMerge(object):
                                 # total_empty_tags_handled += 1
                                 total_empty_tags -= 1
 			
-                        corrupted_tags = re.findall(r"\d/w:t",xml)
+                        corrupted_tags = re.findall(r".\/w:t>",xml)
                         for i in range(len(corrupted_tags)):
                             c_tag_index = xml.find(corrupted_tags[i])
-                            temp = xml[:c_tag_index] + '<' + xml[c_tag_index+1:]
-                            del(xml)
-                            xml = temp
-                            del(temp)
+                            if xml[c_tag_index] != '<':
+                                temp = xml[:c_tag_index] + '<' + xml[c_tag_index+1:]
+                                del(xml)
+                                xml = temp
+                                del(temp)
                         f = open('final_xml.xml','w')
                         f.write(f"{xml}")
                         f.close()
