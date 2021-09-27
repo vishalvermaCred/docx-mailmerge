@@ -140,7 +140,7 @@ class MailMerge(object):
     #             else:
     #                 output.writestr(zi.filename, self.zip.read(zi))
 
-    def write(self, file):
+    def write(self, file, is_vernacular):
         # Replace all remaining merge fields with empty values
         for field in self.get_merge_fields():
             self.merge(**{field: ''})
@@ -280,9 +280,19 @@ class MailMerge(object):
                                 # print(len(xml))
                                 # total_empty_tags_handled += 1
                                 total_empty_tags -= 1
-                        f = open('final_xml.xml','w')
-                        f.write(f"{xml}")
-                        f.close()
+			
+                        if is_vernacular:
+                            corrupted_tags = re.findall(r".\/w:t>",xml)
+                            for i in range(len(corrupted_tags)):
+                                c_tag_index = xml.find(corrupted_tags[i])
+                                if xml[c_tag_index] != '<':
+                                    temp = xml[:c_tag_index] + '<' + xml[c_tag_index+1:]
+                                    del(xml)
+                                    xml = temp
+                                    del(temp)
+                        # f = open('final_xml.xml','w')
+                        # f.write(f"{xml}")
+                        # f.close()
                         xml = bytes(xml,'utf-8')
                     output.writestr(zi.filename, xml)
                 elif zi == self._settings_info:
